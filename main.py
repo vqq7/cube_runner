@@ -24,16 +24,27 @@ def game_loop(screen, clock, bg_image, ground_image, speed_inc):
     dino, obstacles, speed, score, ground_offset = reset()
     game_over = False
 
+    # ===== CHEAT =====
+    cheat_no_obstacles = False  # C to toggle
+
     while True:
         dt = clock.tick(FPS)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "exit"
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return "menu"
 
+                # ---- CHEAT: toggle obstacles ----
+                if event.key == pygame.K_c:
+                    cheat_no_obstacles = not cheat_no_obstacles
+                    if cheat_no_obstacles:
+                        obstacles.clear()
+
+                # jump / restart
                 if event.key in (pygame.K_SPACE, pygame.K_UP):
                     if not game_over:
                         dino.set_jump_hold(True)
@@ -41,7 +52,9 @@ def game_loop(screen, clock, bg_image, ground_image, speed_inc):
                     else:
                         dino, obstacles, speed, score, ground_offset = reset()
                         game_over = False
+                        cheat_no_obstacles = False  # можно убрать, если хочешь чтобы чит сохранялся
 
+                # crouch
                 if event.key in (pygame.K_DOWN, pygame.K_s) and not game_over:
                     dino.set_crouch(True)
 
@@ -51,6 +64,7 @@ def game_loop(screen, clock, bg_image, ground_image, speed_inc):
                 if event.key in (pygame.K_DOWN, pygame.K_s):
                     dino.set_crouch(False)
 
+        # ---------- UPDATE ----------
         if not game_over:
             keys = pygame.key.get_pressed()
             dino.set_jump_hold(keys[pygame.K_SPACE] or keys[pygame.K_UP])
@@ -62,29 +76,39 @@ def game_loop(screen, clock, bg_image, ground_image, speed_inc):
             score += speed * 0.1
             ground_offset += speed
 
-            for o in obstacles:
-                o.update(speed)
-                if collide(dino, o):
-                    game_over = True
+            if cheat_no_obstacles:
+                # чит включён — препятствий нет, коллизий нет, спавна нет
+                obstacles.clear()
+            else:
+                for o in obstacles:
+                    o.update(speed)
+                    if collide(dino, o):
+                        game_over = True
 
-            obstacles = [o for o in obstacles if o.rect.right > -20]
+                obstacles = [o for o in obstacles if o.rect.right > -20]
 
-            if obstacles:
-                rightmost = max(o.x for o in obstacles)
-                if rightmost < W + 260:
-                    obstacles.append(spawn_obstacle(rightmost))
+                if obstacles:
+                    rightmost = max(o.x for o in obstacles)
+                    if rightmost < W + 260:
+                        obstacles.append(spawn_obstacle(rightmost))
+                else:
+                    obstacles.append(spawn_obstacle(W))
 
-        # DRAW
+        # ---------- DRAW ----------
         screen.blit(bg_image, (0, 0))
         screen.blit(ground_image, (0, GROUND_Y))
 
         for o in obstacles:
             o.draw(screen)
+
         draw_dino(screen, dino)
 
         screen.blit(font.render(f"Score: {int(score)}", True, TEXT_COLOR), (10, 10))
         screen.blit(font.render(f"Speed: {speed:.1f}", True, TEXT_COLOR), (10, 32))
         screen.blit(font.render(f"Accel: {speed_inc:.5f}   (ESC = menu)", True, TEXT_COLOR), (10, 54))
+
+        if cheat_no_obstacles:
+            screen.blit(font.render("CHEAT: NO OBSTACLES (C to toggle)", True, (200, 0, 0)), (10, 76))
 
         if game_over:
             screen.blit(big_font.render("GAME OVER", True, (0, 0, 0)), (W // 2 - 110, 120))
@@ -96,10 +120,10 @@ def game_loop(screen, clock, bg_image, ground_image, speed_inc):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((W, H))
-    pygame.display.set_caption("Cube Runner")
+    pygame.display.set_caption("Dino Runner")
     clock = pygame.time.Clock()
 
-    # загрузка ресурсов (после set_mode!)
+    # ресурсы (после set_mode!)
     menu_bg = pygame.image.load("assets/menu_bg.png").convert()
     menu_bg = pygame.transform.scale(menu_bg, (W, H))
 
@@ -109,7 +133,7 @@ def main():
     ground_image = pygame.image.load("assets/ground.png").convert()
     ground_image = pygame.transform.scale(ground_image, (W, H - GROUND_Y))
 
-    speed_inc = SPEED_INC  # стартовое значение из config
+    speed_inc = SPEED_INC
 
     state = "menu"
     while True:

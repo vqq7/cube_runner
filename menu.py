@@ -10,8 +10,12 @@ def _draw_button(screen, rect, text, font, mouse_pos):
     color = BTN_HOVER if rect.collidepoint(mouse_pos) else BTN_COLOR
     pygame.draw.rect(screen, color, rect, border_radius=12)
     label = font.render(text, True, BTN_TEXT)
-    screen.blit(label, (rect.centerx - label.get_width() // 2,
-                        rect.centery - label.get_height() // 2))
+    screen.blit(
+        label,
+        (rect.centerx - label.get_width() // 2,
+         rect.centery - label.get_height() // 2)
+    )
+
 
 def run_menu(screen, clock, menu_bg, speed_inc_value):
     """
